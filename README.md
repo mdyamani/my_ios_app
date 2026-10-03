@@ -1,17 +1,14 @@
 # my_ios_app
 
-A new Flutter project.
+A small Flutter test app, written on Windows and built for iOS on GitHub Actions.
 
-## Getting Started
+## Run locally
+```
+flutter pub get
+flutter run
+```
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Build for iOS (free)
+1. Go to **Actions → iOS build → Run workflow**
+2. When it finishes, download `my_ios_app-unsigned-ipa` from **Artifacts**
+3. Install on an iPhone with [Sideloadly](https://sideloadly.io) (free Apple ID, app lasts 7 days)
