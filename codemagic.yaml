@@ -1,0 +1,44 @@
+# Codemagic config: builds the iOS app on a cloud Mac and uploads it to TestFlight.
+# Before the first build:
+#   1. Create the app in App Store Connect with the same bundle ID as below.
+#   2. In Codemagic > Team settings > Integrations > Developer Portal, add an
+#      App Store Connect API key and name it exactly as in `integrations` below.
+workflows:
+  ios-release:
+    name: iOS release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: codemagic_api_key   # name of the key you add in Codemagic
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.dev1337.myIosApp
+      vars:
+        APP_STORE_APPLE_ID: 0000000000   # replace with the Apple ID number from App Store Connect > App Information
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+    scripts:
+      - name: Set up code signing
+        script: xcode-project use-profiles
+      - name: Get packages
+        script: flutter pub get
+      - name: Install pods
+        script: find . -name "Podfile" -execdir pod install \;
+      - name: Build IPA
+        script: |
+          flutter build ipa --release \
+            --build-number=$(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID") + 1)) \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
