@@ -1,0 +1,73 @@
+# Takes App Store screenshots in iPhone 6.9" and iPad 13" simulators.
+# Needs (copy from workflow-templates/screenshots/):
+#   integration_test/screenshots_test.dart   ← the screens to capture
+#   test_driver/integration_test.dart        ← saves the PNG files
+# and in pubspec.yaml dev_dependencies:
+#   integration_test:
+#     sdk: flutter
+# Run: Actions > "iOS screenshots" > Run workflow. Download the "screenshots-*" artifacts.
+name: iOS screenshots
+
+on:
+  workflow_dispatch:
+
+jobs:
+  screenshots:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: iphone-6.9
+            device: 'iPhone \d+ Pro Max'
+          - name: ipad-13
+            device: 'iPad Pro 13-inch'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Boot simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, re, sys
+          pattern = re.compile(sys.argv[1])
+          found = []
+          for runtime, devices in json.load(sys.stdin)["devices"].items():
+              m = re.search(r"iOS-(\d+)-(\d+)", runtime)
+              if not m:
+                  continue
+              for d in devices:
+                  if pattern.match(d["name"]):
+                      found.append(((int(m.group(1)), int(m.group(2))), d["name"], d["udid"]))
+          found.sort()
+          print(found[-1][1], file=sys.stderr)
+          print(found[-1][2])
+          ' '${{ matrix.device }}')
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+
+      - name: Take screenshots
+        env:
+          SCREENSHOT_DIR: screenshots/${{ matrix.name }}
+        run: |
+          flutter drive \
+            --driver=test_driver/integration_test.dart \
+            --target=integration_test/screenshots_test.dart \
+            -d "$UDID"
+          ls -la "$SCREENSHOT_DIR"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: screenshots-${{ matrix.name }}
+          path: screenshots/${{ matrix.name }}/*.png
+          retention-days: 14
